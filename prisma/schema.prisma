@@ -1,0 +1,123 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator zod {
+  provider              = "zod-prisma-types"
+  output                = "./zod"
+  relationModel         = true
+  modelCase             = "camelCase"
+  modelSuffix           = "Schema"
+  useDecimalJs          = true
+  prismaJsonNullability = true
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id             String  @id
+  email          String  @unique
+  hashedPassword String
+  name           String?
+
+  sessions      Session[]
+  topics        Topic[]
+  posts         Post[]
+  comments      Comment[]
+  votes         Vote[]
+  subscriptions Subscription[]
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+
+  user User @relation(references: [id], fields: [userId], onDelete: Cascade)
+}
+
+model Topic {
+  id       String  @id @default(cuid())
+  name     String
+  slug     String
+  authorId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  posts         Post[]
+  subscriptions Subscription[]
+  author        User?          @relation(references: [id], fields: [authorId], onDelete: Cascade)
+
+  @@index([name])
+  @@index([authorId])
+}
+
+model Post {
+  id       String @id @default(cuid())
+  title    String
+  slug     String
+  content  String
+  topicId  String
+  authorId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  comments Comment[]
+  votes    Vote[]
+  topic    Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  author   User      @relation(references: [id], fields: [authorId], onDelete: Cascade)
+
+  @@index([authorId])
+}
+
+model Comment {
+  id       String @id @default(cuid())
+  text     String
+  postId   String
+  authorId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(references: [id], fields: [authorId], onDelete: Cascade)
+
+  @@index([authorId])
+}
+
+model Vote {
+  id String  @id @default(cuid())
+  up Boolean
+
+  postId   String
+  authorId String
+
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(references: [id], fields: [authorId], onDelete: Cascade)
+
+  @@index([authorId])
+}
+
+model Subscription {
+  id      String  @id @default(cuid())
+  name    String?
+  topicId String
+  userId  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  user  User  @relation(references: [id], fields: [userId], onDelete: Cascade)
+
+  @@index([userId])
+}
